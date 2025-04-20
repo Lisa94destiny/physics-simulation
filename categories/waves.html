@@ -158,6 +158,46 @@
             <h2 class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">振动与波动模块</h2>
             
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- 横波理解 -->
+                <div class="card bg-white rounded-xl shadow-md overflow-hidden" data-category="wave-properties" data-difficulty="intermediate">
+                    <div class="h-48 overflow-hidden bg-indigo-50 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" class="w-full h-full p-4">
+                            <!-- 波形 -->
+                            <line x1="30" y1="100" x2="170" y2="100" stroke="#6B7280" stroke-width="1" opacity="0.5"/>
+                            <path d="M 30,100 Q 50,70 70,100 Q 90,130 110,100 Q 130,70 150,100 Q 170,130 190,100" stroke="#3B82F6" stroke-width="2.5" fill="none"/>
+                            
+                            <!-- 质点 -->
+                            <circle cx="50" cy="85" r="6" fill="#F59E0B"/>
+                            <circle cx="80" cy="115" r="6" fill="#F59E0B"/>
+                            <circle cx="110" cy="85" r="6" fill="#F59E0B"/>
+                            <circle cx="140" cy="115" r="6" fill="#F59E0B"/>
+                            
+                            <!-- 坐标系 -->
+                            <line x1="30" y1="150" x2="170" y2="150" stroke="#6B7280" stroke-width="1.5" opacity="0.7"/>
+                            <line x1="30" y1="170" x2="30" y2="130" stroke="#6B7280" stroke-width="1.5" opacity="0.7"/>
+                            
+                            <text x="170" y="165" font-size="10" fill="#6B7280">x</text>
+                            <text x="20" y="135" font-size="10" fill="#6B7280">y</text>
+                            
+                            <!-- 振动图 -->
+                            <path d="M 50,170 Q 60,160 70,170 Q 80,180 90,170" stroke="#10B981" stroke-width="1.5" fill="none"/>
+                            <line x1="70" y1="150" x2="70" y2="190" stroke="#6B7280" stroke-width="1" stroke-dasharray="2,2"/>
+                            <line x1="70" y1="170" x2="110" y2="170" stroke="#6B7280" stroke-width="1" opacity="0.5"/>
+                            <text x="105" y="165" font-size="8" fill="#6B7280">t</text>
+                        </svg>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="text-xl font-semibold text-gray-800">横波理解</h3>
+                            <span class="text-xs font-medium bg-indigo-100 text-indigo-800 px-2 py-1 rounded">中级</span>
+                        </div>
+                        <p class="text-gray-600 mb-4">了解横波的性质、传播特性与空间分布，探索质点振动与波传播的关系。</p>
+                        <a href="../simulations/waves/transverse/transverse_wave.html" class="inline-block bg-indigo-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 transition btn">
+                            <i class="fas fa-play mr-2"></i>开始实验
+                        </a>
+                    </div>
+                </div>
+
                 <!-- 弹簧振子 -->
                 <div class="card bg-white rounded-xl shadow-md overflow-hidden" data-category="oscillation" data-difficulty="basic">
                     <div class="h-48 overflow-hidden bg-indigo-50 flex items-center justify-center">

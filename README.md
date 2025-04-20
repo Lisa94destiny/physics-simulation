@@ -101,6 +101,7 @@ https://lisa94destiny.github.io/physics-simulation/
 │   │   ├── electric-field.html         # 电场可视化
 │   │   └── magnetic-field.html         # 磁场与电流
 │   ├── waves/                  # 振动与波动实验
+│   │   ├── transverse/                 # 横波理解
 │   │   ├── harmonic.html               # 简谐运动
 │   │   ├── wave2d.html                 # 波的二维干涉
 │   │   ├── spring.html                 # 弹簧振子

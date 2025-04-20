@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>横波理解与可视化 - 物理可视化教学</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- p5.js 库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+    <!-- 自定义样式 -->
+    <style>
+        /* 自定义颜色变量 */
+        :root {
+            --primary: #5E6AD2;
+            --primary-light: #8D91E2;
+            --secondary: #10B981;
+            --accent: #F59E0B;
+            --dark: #111827;
+            --light: #F9FAFB;
+            --gray: #6B7280;
+            --light-gray: #E5E7EB;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: var(--dark);
+            background-color: var(--light);
+        }
+        
+        .btn {
+            transition: transform 0.2s ease;
+        }
+        
+        .btn:hover {
+            transform: scale(1.05);
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            box-shadow: 0 0 0 3px rgba(94, 106, 210, 0.3);
+            border-color: var(--primary);
+        }
+        
+        /* 滑块自定义样式 */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #e5e7eb;
+            outline: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #5E6AD2;
+            cursor: pointer;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border: none;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        input[type="range"]::-ms-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: var(--primary-light);
+            transform: scale(1.1);
+        }
+
+        /* Canvas 容器 */
+        .canvas-container {
+            position: relative;
+            background-color: #FFFFFF;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="../../../categories/waves.html" class="flex items-center text-xl font-semibold text-gray-800">
+                        <i class="fas fa-arrow-left mr-2 text-indigo-600"></i>
+                        返回波动页面
+                    </a>
+                </div>
+                <div class="flex items-center">
+                    <span class="text-xl font-semibold text-gray-800">
+                        <i class="fas fa-wave-square mr-2 text-indigo-600"></i>
+                        横波理解
+                    </span>
+                </div>
+                <div class="flex items-center">
+                    <a href="../../../index.html" class="flex items-center text-xl font-semibold text-gray-800">
+                        <i class="fas fa-home mr-2 text-indigo-600"></i>
+                        首页
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主要内容 -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- 主内容区域 -->
+        <div class="flex flex-col md:flex-row gap-8">
+            <!-- 左侧控制面板 -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-xl shadow-md p-6">
+                    <h3 class="text-xl font-semibold mb-6 text-gray-800 border-b pb-2">实验参数控制</h3>
+                    
+                    <div class="space-y-6">
+                        <!-- 周期T控制 -->
+                        <div>
+                            <label for="period-input" class="block text-sm font-medium text-gray-700 mb-2">
+                                周期 T (s)
+                                <span id="period-value" class="text-indigo-600 ml-2">1.0</span>
+                            </label>
+                            <input type="range" id="period-input" min="0.5" max="2.0" value="1.0" step="0.1" class="w-full">
+                        </div>
+                        
+                        <!-- 波长控制 -->
+                        <div>
+                            <label for="wavelength" class="block text-sm font-medium text-gray-700 mb-2">
+                                波长 λ (m)
+                                <span id="wavelength-value" class="text-indigo-600 ml-2">1.0</span>
+                            </label>
+                            <input type="range" id="wavelength" min="0.5" max="2.0" value="1.0" step="0.1" class="w-full">
+                        </div>
+                        
+                        <!-- 振幅控制 -->
+                        <div>
+                            <label for="amplitude" class="block text-sm font-medium text-gray-700 mb-2">
+                                振幅 A (m)
+                                <span id="amplitude-value" class="text-indigo-600 ml-2">0.5</span>
+                            </label>
+                            <input type="range" id="amplitude" min="0.1" max="1.0" value="0.5" step="0.1" class="w-full">
+                        </div>
+                        
+                        <!-- 传播方向控制 -->
+                        <div>
+                            <label for="direction" class="block text-sm font-medium text-gray-700 mb-2">传播方向</label>
+                            <div class="flex space-x-4">
+                                <div class="flex items-center">
+                                    <input type="radio" id="direction-right" name="direction" value="right" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500" checked>
+                                    <label for="direction-right" class="ml-2 block text-sm text-gray-700">向右</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input type="radio" id="direction-left" name="direction" value="left" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500">
+                                    <label for="direction-left" class="ml-2 block text-sm text-gray-700">向左</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 可视化选项 -->
+                        <div class="space-y-3">
+                            <div class="flex items-center">
+                                <input type="checkbox" id="show-particles" class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4" checked>
+                                <label for="show-particles" class="ml-2 block text-sm text-gray-700">显示质点</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="checkbox" id="show-wavefront" class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4" checked>
+                                <label for="show-wavefront" class="ml-2 block text-sm text-gray-700">显示波前</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="checkbox" id="show-grid" class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+                                <label for="show-grid" class="ml-2 block text-sm text-gray-700">显示网格</label>
+                            </div>
+                        </div>
+                        
+                        <!-- 按钮组 -->
+                        <div class="flex space-x-3 pt-4 border-t">
+                            <button id="reset-btn" class="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition btn">
+                                <i class="fas fa-redo-alt mr-2"></i>重置
+                            </button>
+                            <button id="start-btn" class="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition btn">
+                                <i class="fas fa-play mr-2"></i>开始
+                            </button>
+                            <button id="pause-btn" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition btn">
+                                <i class="fas fa-pause mr-2"></i>暂停
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 物理量显示面板 -->
+                <div class="bg-white rounded-xl shadow-md p-6 mt-6">
+                    <h3 class="text-xl font-semibold mb-6 text-gray-800 border-b pb-2">物理量实时显示</h3>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <div class="text-sm text-gray-700">频率 f:</div>
+                            <div id="frequency" class="text-xl font-bold text-indigo-600">1.00 Hz</div>
+                        </div>
+                        
+                        <div>
+                            <div class="text-sm text-gray-700">角频率 ω:</div>
+                            <div id="angular-frequency" class="text-xl font-bold text-green-600">6.28 rad/s</div>
+                        </div>
+                        
+                        <div>
+                            <div class="text-sm text-gray-700">波数 k:</div>
+                            <div id="wave-number" class="text-xl font-bold text-orange-600">6.28 rad/m</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 右侧模拟区域 -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- 横波动画 -->
+                <div class="canvas-container w-full" style="height: 200px;">
+                    <div id="wave-animation-container"></div>
+                </div>
+                
+                <!-- y-x 图像 -->
+                <div class="canvas-container w-full" style="height: 300px;">
+                    <div id="wave-shape-container"></div>
+                </div>
+                
+                <!-- y-t 图像 -->
+                <div class="canvas-container w-full" style="height: 300px;">
+                    <div id="particle-motion-container"></div>
+                </div>
+                
+                <!-- 实验原理说明 -->
+                <div class="bg-white rounded-xl shadow-md p-6">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800">横波基本原理</h3>
+                    <p class="text-gray-600 mb-4">
+                        横波是指质点振动方向与波传播方向垂直的机械波。在横波中，介质中的质点沿垂直于波传播方向的方向振动，形成波峰和波谷。
+                    </p>
+                    <p class="text-gray-600 mb-4">
+                        横波的数学表达式可以表示为：
+                    </p>
+                    <div class="bg-gray-50 rounded-md p-4 text-center my-4">
+                        <span class="text-lg text-gray-800 font-medium">y(x,t) = A·sin(kx - ωt + φ)</span>
+                    </div>
+                    <p class="text-gray-600 mb-4">
+                        其中，A是振幅，k = 2π/λ是波数，ω = 2πf是角频率，φ是初相位。波速v = λf = ω/k。
+                    </p>
+                    <p class="text-gray-600">
+                        横波的例子包括绳子上的波、水面上的部分波、电磁波等。理解横波对于学习波动学、声学和光学都有重要意义。
+                    </p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-gray-50 border-t border-gray-200 py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col sm:flex-row justify-between items-center">
+                <p class="text-sm text-gray-500">&copy; 2025 物理可视化教学平台. 保留所有权利.</p>
+                <p class="text-sm text-gray-500 mt-2 sm:mt-0">作者：<span class="text-indigo-600 font-medium">Lisa</span></p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 导入JavaScript文件 -->
+    <script src="transverse_main.js"></script>
+    <script src="wave_animation.js"></script>
+    <script src="wave_shape.js"></script>
+    <script src="particle_motion.js"></script>
+</body>
+</html> 
