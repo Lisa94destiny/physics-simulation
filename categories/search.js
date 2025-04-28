@@ -335,6 +335,31 @@ function initSearchComponent() {
         } else {
             console.warn('找不到合适的导航区域来放置搜索图标');
         }
+        
+        // 添加到移动端菜单
+        const mobileMenu = document.getElementById('mobile-menu');
+        if (mobileMenu) {
+            const mobileMenuContent = mobileMenu.querySelector('.px-2.pt-2.pb-3.space-y-1');
+            if (mobileMenuContent) {
+                const mobileSearchIcon = document.createElement('a');
+                mobileSearchIcon.href = "#";
+                mobileSearchIcon.className = 'block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50';
+                mobileSearchIcon.innerHTML = '<i class="fas fa-search mr-2"></i>搜索';
+                
+                // 点击事件
+                mobileSearchIcon.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    // 关闭移动端菜单
+                    mobileMenu.classList.add('hidden');
+                    // 打开搜索框
+                    document.querySelector('.search-modal').classList.remove('hidden');
+                    // 聚焦搜索输入框
+                    setTimeout(() => document.querySelector('.search-input').focus(), 100);
+                });
+                
+                mobileMenuContent.appendChild(mobileSearchIcon);
+            }
+        }
     }
 }
 

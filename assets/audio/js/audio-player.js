@@ -349,6 +349,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const audioPlayer = new AudioPlayer();
     audioPlayer.init();
     
+    // 为移动端添加音频按钮
+    const mobileMenu = document.getElementById('mobile-menu');
+    if (mobileMenu) {
+        const mobileMenuContent = mobileMenu.querySelector('.px-2.pt-2.pb-3.space-y-1');
+        if (mobileMenuContent) {
+            const mobileAudioButton = document.createElement('a');
+            mobileAudioButton.href = "#";
+            mobileAudioButton.className = 'block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50';
+            mobileAudioButton.innerHTML = '<i class="fas fa-headphones mr-2"></i>上手导引';
+            
+            mobileMenuContent.appendChild(mobileAudioButton);
+            
+            // 点击事件
+            mobileAudioButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                // 关闭移动端菜单
+                mobileMenu.classList.add('hidden');
+                // 显示音频播放器并开始播放
+                audioPlayer.showPlayer();
+                audioPlayer.play();
+            });
+        }
+    }
+    
     // 点击按钮时显示播放器并开始播放
     audioButton.addEventListener('click', (e) => {
         e.preventDefault();
