@@ -37,6 +37,12 @@ const allExperiments = [
         tags: ["波叠加", "干涉", "驻波", "行波"]
     },
     {
+        title: "横波理解",
+        category: "振动与波动",
+        url: "simulations/waves/transverse.html",
+        tags: ["横波", "波动", "振动方向", "传播方向", "波形"]
+    },
+    {
         title: "狭义相对论",
         category: "光学与现代物理",
         url: "simulations/optics-modern/relativity/relativity.html",
@@ -49,6 +55,12 @@ const allExperiments = [
         tags: ["动量", "碰撞", "守恒", "弹性碰撞", "非弹性碰撞"]
     },
     {
+        title: "力的合成与分解",
+        category: "力学",
+        url: "simulations/mechanics/force-composition.html",
+        tags: ["力", "合成", "分解", "平行四边形法则", "三角形法则", "分力", "合力"]
+    },
+    {
         title: "电场可视化",
         category: "电磁学",
         url: "simulations/electromagnetism/electric-field.html",
@@ -59,6 +71,12 @@ const allExperiments = [
         category: "电磁学",
         url: "simulations/electromagnetism/magnetic-field.html",
         tags: ["安培力", "磁场", "洛伦兹力", "电流", "右手定则"]
+    },
+    {
+        title: "速度选择器",
+        category: "电磁学",
+        url: "simulations/electromagnetism/velocity-selector.html",
+        tags: ["电场", "磁场", "洛伦兹力", "电磁力", "带电粒子"]
     },
     {
         title: "数据分析实验",
@@ -76,14 +94,14 @@ const popularExperiments = [
         url: "simulations/optics-modern/double-slit.html"
     },
     {
+        title: "力的合成与分解",
+        category: "力学",
+        url: "simulations/mechanics/force-composition.html"
+    },
+    {
         title: "简谐运动",
         category: "振动与波动",
         url: "simulations/waves/harmonic.html"
-    },
-    {
-        title: "动量守恒",
-        category: "力学",
-        url: "simulations/mechanics/momentum-conservation.html"
     },
     {
         title: "电场可视化",
