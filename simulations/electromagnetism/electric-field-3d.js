@@ -10,12 +10,14 @@ let chargeLabels = [];
 let showFieldLines = true;
 let showEquipotential = true;
 let showChargesLabel = true;
-let showGGBStyle = false; // GGB风格等势面
 let fieldLineDensity = 48;
 let equipotentialValue = 2000; // 单个可调节等势面的电势值
 let equipotentialLinesCount = 10; // 固定等势线数量
 let showEquipotentialLines = true; // 是否显示固定等势线
-let ggbSurfaces = []; // GGB风格等势面对象数组
+
+// 边界常量
+const POSITION_LIMIT = 15; // 电荷位置的最大绝对值
+const POSITION_LIMIT_DOPPLER = 15; // 用于显示提示信息
 
 // 物理常量
 const k = 8.99e9; // 静电力常量 N·m²/C²
@@ -175,18 +177,21 @@ function updateChargeControls() {
                     <div>
                         <label class="block text-xs text-gray-500 mb-1">X</label>
                         <input type="number" class="charge-pos w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                               value="${charge.x.toFixed(1)}" step="0.5" data-index="${index}" data-axis="x">
+                               value="${charge.x.toFixed(1)}" step="0.5" min="-15" max="15" data-index="${index}" data-axis="x">
                     </div>
                     <div>
                         <label class="block text-xs text-gray-500 mb-1">Y</label>
                         <input type="number" class="charge-pos w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                               value="${charge.y.toFixed(1)}" step="0.5" data-index="${index}" data-axis="y">
+                               value="${charge.y.toFixed(1)}" step="0.5" min="-15" max="15" data-index="${index}" data-axis="y">
                     </div>
                     <div>
                         <label class="block text-xs text-gray-500 mb-1">Z</label>
                         <input type="number" class="charge-pos w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                               value="${charge.z.toFixed(1)}" step="0.5" data-index="${index}" data-axis="z">
+                               value="${charge.z.toFixed(1)}" step="0.5" min="-15" max="15" data-index="${index}" data-axis="z">
                     </div>
+                </div>
+                <div class="text-xs text-gray-400 mb-2">
+                    位置范围: ±15
                 </div>
                 <div class="flex items-center gap-3">
                     <button class="toggle-sign px-3 py-1 text-xs rounded border ${charge.q > 0 ? 'bg-red-100 border-red-300 text-red-700' : 'bg-blue-100 border-blue-300 text-blue-700'}"
@@ -213,7 +218,16 @@ function updateChargeControls() {
         input.addEventListener('change', (e) => {
             const index = parseInt(e.target.dataset.index);
             const axis = e.target.dataset.axis;
-            charges[index][axis] = parseFloat(e.target.value);
+            let value = parseFloat(e.target.value);
+
+            // 边界验证
+            if (Math.abs(value) > POSITION_LIMIT) {
+                value = value > 0 ? POSITION_LIMIT : -POSITION_LIMIT;
+                e.target.value = value.toFixed(1);
+                alert(`位置超出范围！坐标值必须在 -${POSITION_LIMIT} 到 ${POSITION_LIMIT} 之间。`);
+            }
+
+            charges[index][axis] = value;
             recreateVisualization();
         });
     });
@@ -818,249 +832,6 @@ function createEquipotentialSurfaces() {
 
     // 创建固定多条等势线（虚线样式）
     createFixedEquipotentialLines();
-
-    // 创建GGB风格等势面
-    if (showGGBStyle) {
-        createGGBEquipotentialSurfaces();
-    }
-}
-
-// 创建GGB风格电势函数图像（黄色曲面）+ 等高线（黑色圈圈）
-function createGGBEquipotentialSurfaces() {
-    // 清除旧的GGB风格等势面
-    ggbSurfaces.forEach(surface => scene.remove(surface));
-    ggbSurfaces = [];
-
-    // 创建黄色参考网格平面（xy平面，y=0）
-    const gridSize = 16;
-    const gridDivisions = 32;
-    const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, 0x000000, 0xFACC15);
-    gridHelper.position.y = -3; // 放在底部作为参考
-    gridHelper.material.opacity = 0.3;
-    gridHelper.material.transparent = true;
-    scene.add(gridHelper);
-    ggbSurfaces.push(gridHelper);
-
-    // 创建电势函数图像：在xz平面上采样电势，用电势值作为y坐标
-    const range = 6; // x和z方向的采样范围（聚焦在电荷附近）
-    const resolution = 120; // 采样分辨率（提高精度）
-
-    const vertices = [];
-    const indices = [];
-    const colors = [];
-    const potentialGrid = []; // 存储电势网格用于等高线绘制
-
-    // 计算电势范围用于归一化
-    let maxPotentialFound = 0;
-    let minPotentialFound = Infinity;
-
-    // 第一遍采样：计算电势范围
-    for (let i = 0; i <= resolution; i++) {
-        potentialGrid[i] = [];
-        for (let j = 0; j <= resolution; j++) {
-            const x = -range + (2 * range * i) / resolution;
-            const z = -range + (2 * range * j) / resolution;
-            const y = 0; // 在xz平面上采样
-
-            const potential = getTotalPotential(x, y, z);
-            potentialGrid[i][j] = potential;
-
-            if (Math.abs(potential) > maxPotentialFound) {
-                maxPotentialFound = Math.abs(potential);
-            }
-            if (potential < minPotentialFound) {
-                minPotentialFound = potential;
-            }
-        }
-    }
-
-    // 增加高度缩放，让山峰更明显
-    const heightScale = 5 / maxPotentialFound; // 将最大电势映射到高度5
-
-    // 第二遍采样：生成顶点
-    for (let i = 0; i <= resolution; i++) {
-        for (let j = 0; j <= resolution; j++) {
-            const x = -range + (2 * range * i) / resolution;
-            const z = -range + (2 * range * j) / resolution;
-            const potential = potentialGrid[i][j];
-            const y = potential * heightScale; // 用电势作为y坐标
-
-            vertices.push(x, y, z);
-
-            // 根据电势正负设置颜色
-            if (potential > 0) {
-                colors.push(1, 0.9, 0.2); // 黄色（正电势）
-            } else {
-                colors.push(0.2, 0.5, 1); // 蓝色（负电势）
-            }
-        }
-    }
-
-    // 创建三角形索引
-    for (let i = 0; i < resolution; i++) {
-        for (let j = 0; j < resolution; j++) {
-            const i1 = i * (resolution + 1) + j;
-            const i2 = i1 + resolution + 1;
-            const i3 = i1 + 1;
-            const i4 = i2 + 1;
-
-            indices.push(i1, i2, i3);
-            indices.push(i3, i2, i4);
-        }
-    }
-
-    // 创建几何体
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-    geometry.setIndex(indices);
-    geometry.computeVertexNormals();
-
-    // GGB风格材质：使用顶点颜色
-    const material = new THREE.MeshBasicMaterial({
-        vertexColors: true,
-        side: THREE.DoubleSide,
-        polygonOffset: true,
-        polygonOffsetFactor: 1,
-        polygonOffsetUnits: 1
-    });
-
-    const mesh = new THREE.Mesh(geometry, material);
-    scene.add(mesh);
-    ggbSurfaces.push(mesh);
-
-    // 添加线框以突出山峰形状
-    const wireframeGeometry = new THREE.WireframeGeometry(geometry);
-    const wireframeMaterial = new THREE.LineBasicMaterial({
-        color: 0x000000,
-        opacity: 0.15,
-        transparent: true
-    });
-    const wireframe = new THREE.LineSegments(wireframeGeometry, wireframeMaterial);
-    scene.add(wireframe);
-    ggbSurfaces.push(wireframe);
-
-    // 添加等高线（黑色圈圈）- 使用marching squares算法
-    const contourLevels = 8;
-    for (let level = 1; level <= contourLevels; level++) {
-        const contourPotential = (maxPotentialFound * level) / (contourLevels + 1);
-        createContourLineMarchingSquares(resolution, range, potentialGrid, contourPotential, heightScale, true);
-        createContourLineMarchingSquares(resolution, range, potentialGrid, -contourPotential, heightScale, false);
-    }
-}
-
-// 使用Marching Squares算法创建等高线
-function createContourLineMarchingSquares(resolution, range, potentialGrid, targetPotential, heightScale, isPositive) {
-    const contourSegments = [];
-
-    // 遍历每个网格单元
-    for (let i = 0; i < resolution; i++) {
-        for (let j = 0; j < resolution; j++) {
-            // 获取单元的四个角点的电势
-            const p00 = potentialGrid[i][j];
-            const p10 = potentialGrid[i + 1][j];
-            const p11 = potentialGrid[i + 1][j + 1];
-            const p01 = potentialGrid[i][j + 1];
-
-            // 检查哪些点在等势线上方/下方
-            const v00 = (isPositive && p00 >= targetPotential) || (!isPositive && p00 <= targetPotential);
-            const v10 = (isPositive && p10 >= targetPotential) || (!isPositive && p10 <= targetPotential);
-            const v11 = (isPositive && p11 >= targetPotential) || (!isPositive && p11 <= targetPotential);
-            const v01 = (isPositive && p01 >= targetPotential) || (!isPositive && p01 <= targetPotential);
-
-            // 计算配置索引（0-15）
-            const config = (v00 ? 8 : 0) | (v10 ? 4 : 0) | (v11 ? 2 : 0) | (v01 ? 1 : 0);
-
-            // 跳过全在上方或全在下方的单元
-            if (config === 0 || config === 15) continue;
-
-            // 计算单元的坐标
-            const x0 = -range + (2 * range * i) / resolution;
-            const x1 = -range + (2 * range * (i + 1)) / resolution;
-            const z0 = -range + (2 * range * j) / resolution;
-            const z1 = -range + (2 * range * (j + 1)) / resolution;
-
-            // 线性插值找到等高线与边的交点
-            const interpolate = (v1, v2, x1, x2, p1, p2) => {
-                if (v1 === v2) return null;
-                const t = (targetPotential - p1) / (p2 - p1);
-                return x1 + t * (x2 - x1);
-            };
-
-            const points = [];
-
-            // 根据配置绘制线段（简化版marching squares）
-            if (config === 1 || config === 14) {
-                const z = interpolate(v01, v11, z0, z1, p01, p11);
-                const x = interpolate(v01, v00, x1, x0, p01, p00);
-                if (z !== null && x !== null) {
-                    points.push(x, targetPotential * heightScale, z);
-                }
-            } else if (config === 2 || config === 13) {
-                const x = interpolate(v11, v01, x1, x0, p11, p01);
-                const z = interpolate(v11, v10, z1, z0, p11, p10);
-                if (x !== null && z !== null) {
-                    points.push(x, targetPotential * heightScale, z);
-                }
-            } else if (config === 3 || config === 12) {
-                const x = interpolate(v01, v00, x1, x0, p01, p00);
-                const z = interpolate(v11, v10, z1, z0, p11, p10);
-                if (x !== null && z !== null) {
-                    points.push(x, targetPotential * heightScale, z);
-                }
-            } else if (config === 4 || config === 11) {
-                const z = interpolate(v10, v11, z0, z1, p10, p11);
-                const x = interpolate(v10, v00, x1, x0, p10, p00);
-                if (z !== null && x !== null) {
-                    points.push(x, targetPotential * heightScale, z);
-                }
-            } else if (config === 5 || config === 10) {
-                // saddle point - 需要特殊处理，简化为两条线段
-                const x1a = interpolate(v01, v00, x1, x0, p01, p00);
-                const z1a = interpolate(v10, v11, z0, z1, p10, p11);
-                const x2a = interpolate(v01, v11, x1, x0, p01, p11);
-                const z2a = interpolate(v10, v00, z1, z0, p10, p00);
-                if (x1a !== null && z1a !== null) {
-                    points.push(x1a, targetPotential * heightScale, z1a);
-                    points.push(x2a, targetPotential * heightScale, z2a);
-                }
-            } else if (config === 6 || config === 9) {
-                const z = interpolate(v10, v11, z0, z1, p10, p11);
-                const x = interpolate(v01, v00, x1, x0, p01, p00);
-                if (z !== null && x !== null) {
-                    points.push(x, targetPotential * heightScale, z);
-                }
-            } else if (config === 7 || config === 8) {
-                const x = interpolate(v10, v00, x1, x0, p10, p00);
-                const z = interpolate(v01, v11, z0, z1, p01, p11);
-                if (x !== null && z !== null) {
-                    points.push(x, targetPotential * heightScale, z);
-                }
-            }
-
-            // 将找到的点添加到线段数组
-            for (let k = 0; k < points.length; k += 3) {
-                contourSegments.push(
-                    points[k], points[k + 1], points[k + 2],
-                    points[k], points[k + 1], points[k + 2]
-                );
-            }
-        }
-    }
-
-    if (contourSegments.length > 0) {
-        const contourGeometry = new THREE.BufferGeometry();
-        contourGeometry.setAttribute('position', new THREE.Float32BufferAttribute(contourSegments, 3));
-
-        const contourMaterial = new THREE.LineBasicMaterial({
-            color: 0x1f2937,
-            linewidth: 2
-        });
-
-        const contourLine = new THREE.LineSegments(contourGeometry, contourMaterial);
-        scene.add(contourLine);
-        ggbSurfaces.push(contourLine);
-    }
 }
 
 // 创建电场可视化
@@ -1072,9 +843,6 @@ function createFieldVisualization() {
 
 // 重新创建电场可视化
 function recreateVisualization() {
-    // 清理GGB风格等势面
-    ggbSurfaces.forEach(surface => scene.remove(surface));
-    ggbSurfaces = [];
     createChargeSpheres();
     createFieldLines();
     createEquipotentialSurfaces();
@@ -1161,12 +929,6 @@ function setupEventListeners() {
         showChargesLabel = e.target.checked;
         // 电荷标签现在直接显示在球体上，通过重新创建来控制显示
         createChargeSpheres();
-    });
-
-    // GGB风格等势面
-    document.getElementById('show-ggb-style').addEventListener('change', (e) => {
-        showGGBStyle = e.target.checked;
-        recreateVisualization();
     });
 
     // 电场线密度
