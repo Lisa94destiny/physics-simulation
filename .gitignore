@@ -13,7 +13,4 @@ Thumbs.db
 .vscode/
 .cursor/
 *.swp
-*.swo
-
-# 忽略 .gitignore 文件本身
-.gitignore 
+*.swo 
