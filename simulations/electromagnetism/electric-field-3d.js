@@ -10,10 +10,12 @@ let chargeLabels = [];
 let showFieldLines = true;
 let showEquipotential = true;
 let showChargesLabel = true;
+let showGGBStyle = false; // GGB风格等势面
 let fieldLineDensity = 48;
 let equipotentialValue = 2000; // 单个可调节等势面的电势值
 let equipotentialLinesCount = 10; // 固定等势线数量
 let showEquipotentialLines = true; // 是否显示固定等势线
+let ggbSurfaces = []; // GGB风格等势面对象数组
 
 // 物理常量
 const k = 8.99e9; // 静电力常量 N·m²/C²
@@ -73,7 +75,7 @@ function init() {
 
     // 创建相机
     camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
-    camera.position.set(0, 8, 15);
+    camera.position.set(0, 12, 20);
 
     // 创建渲染器
     renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -85,8 +87,8 @@ function init() {
     controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
-    controls.minDistance = 3;
-    controls.maxDistance = 50;
+    controls.minDistance = 5;
+    controls.maxDistance = 80;
 
     // 添加环境光和方向光
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -341,9 +343,9 @@ function createFieldLines() {
     if (!showFieldLines) return;
 
     const lineCount = fieldLineDensity;
-    const maxSteps = 400;
-    const stepSize = 0.06;
-    const bounds = 15;
+    const maxSteps = 800;
+    const stepSize = 0.05;
+    const bounds = 25;
 
     const positiveCharges = charges.filter(c => c.q > 0);
     const negativeCharges = charges.filter(c => c.q < 0);
@@ -816,6 +818,153 @@ function createEquipotentialSurfaces() {
 
     // 创建固定多条等势线（虚线样式）
     createFixedEquipotentialLines();
+
+    // 创建GGB风格等势面
+    if (showGGBStyle) {
+        createGGBEquipotentialSurfaces();
+    }
+}
+
+// 创建GGB风格等势面（黄色简化曲面带黑色等高线）
+function createGGBEquipotentialSurfaces() {
+    // 清除旧的GGB风格等势面
+    ggbSurfaces.forEach(surface => scene.remove(surface));
+    ggbSurfaces = [];
+
+    // 添加黄色参考网格平面 (y = -2)
+    const gridHelper = new THREE.GridHelper(20, 20, 0x000000, 0xFACC15);
+    gridHelper.position.y = -2;
+    scene.add(gridHelper);
+    ggbSurfaces.push(gridHelper);
+
+    // 计算合理的电势范围
+    const totalCharge = charges.reduce((sum, c) => sum + Math.abs(c.q), 0);
+    if (totalCharge === 0) return;
+
+    // 根据总电荷量动态计算电势范围
+    const testDistance = 3;
+    let testPotential = 0;
+    charges.forEach(charge => {
+        testPotential += Math.abs(charge.q) * 1e-6 * k / testDistance;
+    });
+
+    const maxPotential = testPotential * 2;
+
+    // 生成多个电势值的等势面
+    const potentialValues = [];
+    const numSurfaces = 6;
+
+    // 为正电荷生成正电势等势面
+    for (let i = 1; i <= numSurfaces; i++) {
+        potentialValues.push(maxPotential * i / numSurfaces);
+    }
+    // 为负电荷生成负电势等势面
+    for (let i = 1; i <= numSurfaces; i++) {
+        potentialValues.push(-maxPotential * i / numSurfaces);
+    }
+
+    potentialValues.forEach(targetPotential => {
+        const isPositive = targetPotential > 0;
+        const correspondingCharges = isPositive ?
+            charges.filter(c => c.q > 0) :
+            charges.filter(c => c.q < 0);
+
+        if (correspondingCharges.length === 0) return;
+
+        correspondingCharges.forEach(charge => {
+            createGGBSurfaceForCharge(charge, targetPotential, isPositive);
+        });
+    });
+}
+
+// 为单个电荷创建GGB风格的等势面
+function createGGBSurfaceForCharge(charge, targetPotential, isPositive) {
+    const segments = 64; // 水平分段数
+    const rings = 30; // 垂直环数
+    const maxRadius = 8; // 最大半径
+
+    const vertices = [];
+    const indices = [];
+    const uvs = [];
+
+    // 创建半球形曲面（向上或向下）
+    for (let ring = 0; ring <= rings; ring++) {
+        const t = ring / rings;
+        const radius = t * maxRadius;
+        const height = isPositive ? (1 - t) * 3 : -(1 - t) * 3;
+
+        for (let seg = 0; seg <= segments; seg++) {
+            const theta = (seg / segments) * Math.PI * 2;
+            const x = charge.x + radius * Math.cos(theta);
+            const z = charge.z + radius * Math.sin(theta);
+            const y = charge.y + height;
+
+            vertices.push(x, y, z);
+            uvs.push(seg / segments, t);
+        }
+    }
+
+    // 创建三角形索引
+    for (let ring = 0; ring < rings; ring++) {
+        for (let seg = 0; seg < segments; seg++) {
+            const i1 = ring * (segments + 1) + seg;
+            const i2 = i1 + segments + 1;
+            const i3 = i1 + 1;
+            const i4 = i2 + 1;
+
+            indices.push(i1, i2, i3);
+            indices.push(i3, i2, i4);
+        }
+    }
+
+    // 创建几何体
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+
+    // GGB风格材质：黄色不透明，带黑色边缘
+    const material = new THREE.MeshBasicMaterial({
+        color: 0xFACC15, // 黄色
+        side: THREE.DoubleSide,
+        polygonOffset: true,
+        polygonOffsetFactor: 1,
+        polygonOffsetUnits: 1
+    });
+
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
+    ggbSurfaces.push(mesh);
+
+    // 添加黑色等高线环
+    for (let ring = 1; ring < rings; ring += 3) {
+        const t = ring / rings;
+        const radius = t * maxRadius;
+        const height = isPositive ? (1 - t) * 3 : -(1 - t) * 3;
+
+        const contourGeometry = new THREE.BufferGeometry();
+        const contourVertices = [];
+
+        for (let seg = 0; seg <= segments; seg++) {
+            const theta = (seg / segments) * Math.PI * 2;
+            const x = charge.x + radius * Math.cos(theta);
+            const z = charge.z + radius * Math.sin(theta);
+            const y = charge.y + height;
+
+            contourVertices.push(x, y, z);
+        }
+
+        contourGeometry.setAttribute('position', new THREE.Float32BufferAttribute(contourVertices, 3));
+
+        const contourMaterial = new THREE.LineBasicMaterial({
+            color: 0x1f2937, // 深灰色/黑色
+            linewidth: 2
+        });
+
+        const contourLine = new THREE.LineLoop(contourGeometry, contourMaterial);
+        scene.add(contourLine);
+        ggbSurfaces.push(contourLine);
+    }
 }
 
 // 创建电场可视化
@@ -827,6 +976,9 @@ function createFieldVisualization() {
 
 // 重新创建电场可视化
 function recreateVisualization() {
+    // 清理GGB风格等势面
+    ggbSurfaces.forEach(surface => scene.remove(surface));
+    ggbSurfaces = [];
     createChargeSpheres();
     createFieldLines();
     createEquipotentialSurfaces();
@@ -915,6 +1067,12 @@ function setupEventListeners() {
         createChargeSpheres();
     });
 
+    // GGB风格等势面
+    document.getElementById('show-ggb-style').addEventListener('change', (e) => {
+        showGGBStyle = e.target.checked;
+        recreateVisualization();
+    });
+
     // 电场线密度
     document.getElementById('field-line-density').addEventListener('input', (e) => {
         const value = parseInt(e.target.value);
@@ -943,7 +1101,7 @@ function setupEventListeners() {
 
     // 重置视角
     document.getElementById('reset-view-btn').addEventListener('click', () => {
-        camera.position.set(0, 8, 15);
+        camera.position.set(0, 12, 20);
         controls.target.set(0, 0, 0);
         controls.update();
     });
@@ -952,6 +1110,44 @@ function setupEventListeners() {
     document.getElementById('reset-charges-btn').addEventListener('click', () => {
         initCharges();
         recreateVisualization();
+    });
+
+    // 全屏功能
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
+    const canvasContainer = document.getElementById('canvas-container');
+
+    fullscreenBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            canvasContainer.requestFullscreen().then(() => {
+                // 进入全屏后调整渲染器大小
+                setTimeout(() => {
+                    const width = window.innerWidth;
+                    const height = window.innerHeight;
+                    camera.aspect = width / height;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(width, height);
+                }, 100);
+            }).catch(err => {
+                console.log(`全屏错误: ${err.message}`);
+            });
+            fullscreenBtn.innerHTML = '<i class="fas fa-compress mr-1"></i>退出';
+        } else {
+            document.exitFullscreen();
+            fullscreenBtn.innerHTML = '<i class="fas fa-expand mr-1"></i>全屏';
+        }
+    });
+
+    // 监听全屏变化事件
+    document.addEventListener('fullscreenchange', () => {
+        if (!document.fullscreenElement) {
+            // 退出全屏后恢复原始大小
+            const width = canvasContainer.offsetWidth;
+            const height = 600;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+            fullscreenBtn.innerHTML = '<i class="fas fa-expand mr-1"></i>全屏';
+        }
     });
 
     // 窗口大小调整

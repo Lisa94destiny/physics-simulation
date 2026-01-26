@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>电场线可视化 - 物理可视化教学</title>
+    <title>静电场模拟（3D）- 物理可视化教学</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome -->
@@ -148,6 +148,28 @@
         .legend-line.dashed {
             border-bottom: 2px dashed #10b981;
         }
+
+        /* 全屏按钮样式 */
+        #fullscreen-btn {
+            transition: all 0.3s ease;
+        }
+
+        #fullscreen-btn:hover {
+            transform: scale(1.05);
+            background-color: rgba(31, 41, 55, 0.9);
+        }
+
+        /* 全屏模式下的样式 */
+        #canvas-container:fullscreen {
+            border-radius: 0;
+        }
+
+        #canvas-container:fullscreen #fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
     </style>
 </head>
 <body>
@@ -218,6 +240,10 @@
                                     <label for="show-equipotential-lines" class="ml-2 block text-sm text-gray-700">显示固定等势线（多条）</label>
                                 </div>
                                 <div class="flex items-center">
+                                    <input type="checkbox" id="show-ggb-style" class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+                                    <label for="show-ggb-style" class="ml-2 block text-sm text-gray-700">GGB风格等势面</label>
+                                </div>
+                                <div class="flex items-center">
                                     <input type="checkbox" id="show-charges-label" class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4" checked>
                                     <label for="show-charges-label" class="ml-2 block text-sm text-gray-700">显示电荷标注</label>
                                 </div>
@@ -259,7 +285,11 @@
                         </div>
                         <div class="legend-item">
                             <div class="w-6 h-3 bg-green-500 opacity-35 rounded"></div>
-                            <span class="text-sm text-gray-700">等势面（完整连续曲面）</span>
+                            <span class="text-sm text-gray-700">标准等势面（完整3D曲面）</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="w-6 h-3 bg-yellow-400 opacity-80 rounded border-2 border-gray-800"></div>
+                            <span class="text-sm text-gray-700">GGB风格等势面（简化教学样式）</span>
                         </div>
                         <div class="legend-item">
                             <div class="legend-line dashed"></div>
@@ -286,6 +316,7 @@
                         <li><i class="fas fa-mouse mr-2 text-indigo-600"></i>左键拖动：旋转视角</li>
                         <li><i class="fas fa-search-plus mr-2 text-indigo-600"></i>滚轮：缩放视图</li>
                         <li><i class="fas fa-hand-paper mr-2 text-indigo-600"></i>右键拖动：平移视图</li>
+                        <li><i class="fas fa-expand mr-2 text-indigo-600"></i>全屏按钮：全屏查看3D场景</li>
                     </ul>
                 </div>
             </div>
@@ -293,8 +324,12 @@
             <!-- 右侧模拟区域 -->
             <div class="lg:col-span-2 space-y-6">
                 <!-- 模拟画布 -->
-                <div id="canvas-container" class="w-full bg-white rounded-xl shadow-md overflow-hidden">
+                <div id="canvas-container" class="w-full bg-white rounded-xl shadow-md overflow-hidden relative">
                     <!-- Three.js 将在这里绘制 -->
+                    <!-- 全屏按钮 -->
+                    <button id="fullscreen-btn" class="absolute top-4 right-4 bg-gray-800 bg-opacity-70 text-white px-3 py-2 rounded-lg hover:bg-gray-900 transition z-10 text-sm">
+                        <i class="fas fa-expand mr-1"></i>全屏
+                    </button>
                 </div>
 
                 <!-- 控制按钮 -->
