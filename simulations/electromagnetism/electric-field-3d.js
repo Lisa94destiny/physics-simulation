@@ -18,6 +18,7 @@ let showEquipotentialLines = true; // 是否显示固定等势线
 // 边界常量
 const POSITION_LIMIT = 15; // 电荷位置的最大绝对值
 const POSITION_LIMIT_DOPPLER = 15; // 用于显示提示信息
+const CHARGE_LIMIT = 10; // 电荷量的最大值（μC）
 
 // 物理常量
 const k = 8.99e9; // 静电力常量 N·m²/C²
@@ -169,8 +170,8 @@ function updateChargeControls() {
                     <div class="flex items-center gap-2">
                         <span class="text-sm text-gray-500">电量:</span>
                         <input type="number" class="charge-amount w-20 px-2 py-1 border border-gray-300 rounded text-sm"
-                               value="${Math.abs(charge.q)}" min="0.1" max="10" step="0.1" data-index="${index}">
-                        <span class="text-sm text-gray-500">μC</span>
+                               value="${Math.abs(charge.q)}" min="0.1" max="${CHARGE_LIMIT}" step="0.1" data-index="${index}">
+                        <span class="text-sm text-gray-500">μC (≤${CHARGE_LIMIT})</span>
                     </div>
                 </div>
                 <div class="grid grid-cols-3 gap-2 mb-3">
@@ -208,8 +209,21 @@ function updateChargeControls() {
     container.querySelectorAll('.charge-amount').forEach(input => {
         input.addEventListener('change', (e) => {
             const index = parseInt(e.target.dataset.index);
+            let value = parseFloat(e.target.value);
             const sign = charges[index].q > 0 ? 1 : -1;
-            charges[index].q = sign * parseFloat(e.target.value);
+
+            // 边界验证
+            if (value > CHARGE_LIMIT) {
+                value = CHARGE_LIMIT;
+                e.target.value = value;
+                alert(`电荷量超出范围！最大值为 ${CHARGE_LIMIT} μC。`);
+            } else if (value < 0.1) {
+                value = 0.1;
+                e.target.value = value;
+                alert(`电荷量不能小于 0.1 μC。`);
+            }
+
+            charges[index].q = sign * value;
             recreateVisualization();
         });
     });
