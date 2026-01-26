@@ -343,9 +343,9 @@ function createFieldLines() {
     if (!showFieldLines) return;
 
     const lineCount = fieldLineDensity;
-    const maxSteps = 800;
-    const stepSize = 0.05;
-    const bounds = 25;
+    const maxSteps = 2000;
+    const stepSize = 0.03;
+    const bounds = 50;
 
     const positiveCharges = charges.filter(c => c.q > 0);
     const negativeCharges = charges.filter(c => c.q < 0);
@@ -825,90 +825,75 @@ function createEquipotentialSurfaces() {
     }
 }
 
-// 创建GGB风格等势面（黄色简化曲面带黑色等高线）
+// 创建GGB风格电势函数图像（黄色曲面）+ 等高线（黑色圈圈）
 function createGGBEquipotentialSurfaces() {
     // 清除旧的GGB风格等势面
     ggbSurfaces.forEach(surface => scene.remove(surface));
     ggbSurfaces = [];
 
-    // 添加黄色参考网格平面 (y = -2)
-    const gridHelper = new THREE.GridHelper(20, 20, 0x000000, 0xFACC15);
-    gridHelper.position.y = -2;
+    // 创建黄色参考网格平面（xy平面，y=0）
+    const gridSize = 16;
+    const gridDivisions = 32;
+    const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, 0x000000, 0xFACC15);
+    gridHelper.position.y = -3; // 放在底部作为参考
+    gridHelper.material.opacity = 0.3;
+    gridHelper.material.transparent = true;
     scene.add(gridHelper);
     ggbSurfaces.push(gridHelper);
 
-    // 计算合理的电势范围
-    const totalCharge = charges.reduce((sum, c) => sum + Math.abs(c.q), 0);
-    if (totalCharge === 0) return;
-
-    // 根据总电荷量动态计算电势范围
-    const testDistance = 3;
-    let testPotential = 0;
-    charges.forEach(charge => {
-        testPotential += Math.abs(charge.q) * 1e-6 * k / testDistance;
-    });
-
-    const maxPotential = testPotential * 2;
-
-    // 生成多个电势值的等势面
-    const potentialValues = [];
-    const numSurfaces = 6;
-
-    // 为正电荷生成正电势等势面
-    for (let i = 1; i <= numSurfaces; i++) {
-        potentialValues.push(maxPotential * i / numSurfaces);
-    }
-    // 为负电荷生成负电势等势面
-    for (let i = 1; i <= numSurfaces; i++) {
-        potentialValues.push(-maxPotential * i / numSurfaces);
-    }
-
-    potentialValues.forEach(targetPotential => {
-        const isPositive = targetPotential > 0;
-        const correspondingCharges = isPositive ?
-            charges.filter(c => c.q > 0) :
-            charges.filter(c => c.q < 0);
-
-        if (correspondingCharges.length === 0) return;
-
-        correspondingCharges.forEach(charge => {
-            createGGBSurfaceForCharge(charge, targetPotential, isPositive);
-        });
-    });
-}
-
-// 为单个电荷创建GGB风格的等势面
-function createGGBSurfaceForCharge(charge, targetPotential, isPositive) {
-    const segments = 64; // 水平分段数
-    const rings = 30; // 垂直环数
-    const maxRadius = 8; // 最大半径
+    // 创建电势函数图像：在xz平面上采样电势，用电势值作为y坐标
+    const range = 8; // x和z方向的采样范围
+    const resolution = 80; // 采样分辨率
 
     const vertices = [];
     const indices = [];
-    const uvs = [];
+    const colors = [];
 
-    // 创建半球形曲面（向上或向下）
-    for (let ring = 0; ring <= rings; ring++) {
-        const t = ring / rings;
-        const radius = t * maxRadius;
-        const height = isPositive ? (1 - t) * 3 : -(1 - t) * 3;
+    // 计算电势范围用于归一化
+    let maxPotentialFound = 0;
+    const potentialValues = [];
 
-        for (let seg = 0; seg <= segments; seg++) {
-            const theta = (seg / segments) * Math.PI * 2;
-            const x = charge.x + radius * Math.cos(theta);
-            const z = charge.z + radius * Math.sin(theta);
-            const y = charge.y + height;
+    // 第一遍采样：计算电势范围
+    for (let i = 0; i <= resolution; i++) {
+        for (let j = 0; j <= resolution; j++) {
+            const x = -range + (2 * range * i) / resolution;
+            const z = -range + (2 * range * j) / resolution;
+            const y = 0; // 在xz平面上采样
+
+            const potential = getTotalPotential(x, y, z);
+            if (Math.abs(potential) > maxPotentialFound) {
+                maxPotentialFound = Math.abs(potential);
+            }
+            potentialValues.push(potential);
+        }
+    }
+
+    const heightScale = 3 / maxPotentialFound; // 将最大电势映射到高度3
+
+    // 第二遍采样：生成顶点
+    for (let i = 0; i <= resolution; i++) {
+        for (let j = 0; j <= resolution; j++) {
+            const x = -range + (2 * range * i) / resolution;
+            const z = -range + (2 * range * j) / resolution;
+            const potential = potentialValues[i * (resolution + 1) + j];
+            const y = potential * heightScale; // 用电势作为y坐标
 
             vertices.push(x, y, z);
-            uvs.push(seg / segments, t);
+
+            // 根据电势正负设置颜色（黄色为主，略微调整）
+            if (potential > 0) {
+                colors.push(1, 0.9, 0.2); // 黄色（正电势）
+            } else {
+                colors.push(0.2, 0.5, 1); // 蓝色（负电势）
+            }
         }
     }
 
     // 创建三角形索引
-    for (let ring = 0; ring < rings; ring++) {
-        for (let seg = 0; seg < segments; seg++) {
-            const i1 = ring * (segments + 1) + seg;
-            const i2 = i1 + segments + 1;
+    for (let i = 0; i < resolution; i++) {
+        for (let j = 0; j < resolution; j++) {
+            const i1 = i * (resolution + 1) + j;
+            const i2 = i1 + resolution + 1;
             const i3 = i1 + 1;
             const i4 = i2 + 1;
 
@@ -920,12 +905,13 @@ function createGGBSurfaceForCharge(charge, targetPotential, isPositive) {
     // 创建几何体
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
     geometry.setIndex(indices);
     geometry.computeVertexNormals();
 
-    // GGB风格材质：黄色不透明，带黑色边缘
+    // GGB风格材质：使用顶点颜色
     const material = new THREE.MeshBasicMaterial({
-        color: 0xFACC15, // 黄色
+        vertexColors: true,
         side: THREE.DoubleSide,
         polygonOffset: true,
         polygonOffsetFactor: 1,
@@ -936,32 +922,52 @@ function createGGBSurfaceForCharge(charge, targetPotential, isPositive) {
     scene.add(mesh);
     ggbSurfaces.push(mesh);
 
-    // 添加黑色等高线环
-    for (let ring = 1; ring < rings; ring += 3) {
-        const t = ring / rings;
-        const radius = t * maxRadius;
-        const height = isPositive ? (1 - t) * 3 : -(1 - t) * 3;
+    // 添加等高线（黑色圈圈）
+    const contourLevels = 10;
+    for (let level = 1; level < contourLevels; level++) {
+        const contourPotential = (maxPotentialFound * level) / contourLevels;
+        createContourLine(resolution, range, vertices, contourPotential, heightScale, true);
+        createContourLine(resolution, range, vertices, -contourPotential, heightScale, false);
+    }
+}
 
-        const contourGeometry = new THREE.BufferGeometry();
-        const contourVertices = [];
+// 创建单条等高线
+function createContourLine(resolution, range, vertices, targetPotential, heightScale, isPositive) {
+    const contourPoints = [];
+    const tolerance = targetPotential * 0.05; // 电势容差
 
-        for (let seg = 0; seg <= segments; seg++) {
-            const theta = (seg / segments) * Math.PI * 2;
-            const x = charge.x + radius * Math.cos(theta);
-            const z = charge.z + radius * Math.sin(theta);
-            const y = charge.y + height;
+    for (let i = 0; i < resolution; i++) {
+        for (let j = 0; j < resolution; j++) {
+            const idx = i * (resolution + 1) + j;
+            const idxRight = idx + 1;
+            const idxDown = idx + resolution + 1;
 
-            contourVertices.push(x, y, z);
+            const x = vertices[idx * 3];
+            const z = vertices[idx * 3 + 2];
+            const y = vertices[idx * 3 + 1];
+
+            // 检查当前点是否接近目标电势
+            const potential = y / heightScale;
+            if (Math.abs(potential - targetPotential) < tolerance) {
+                // 只在特定间隔添加点，避免过密
+                if (i % 3 === 0 || j % 3 === 0) {
+                    contourPoints.push(x, y, z);
+                }
+            }
         }
+    }
 
-        contourGeometry.setAttribute('position', new THREE.Float32BufferAttribute(contourVertices, 3));
+    if (contourPoints.length > 6) {
+        const contourGeometry = new THREE.BufferGeometry();
+        contourGeometry.setAttribute('position', new THREE.Float32BufferAttribute(contourPoints, 3));
 
         const contourMaterial = new THREE.LineBasicMaterial({
             color: 0x1f2937, // 深灰色/黑色
             linewidth: 2
         });
 
-        const contourLine = new THREE.LineLoop(contourGeometry, contourMaterial);
+        // 使用LineSegments创建不连续的线段
+        const contourLine = new THREE.LineSegments(contourGeometry, contourMaterial);
         scene.add(contourLine);
         ggbSurfaces.push(contourLine);
     }
