@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>电场线可视化 - 物理可视化教学</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- OrbitControls -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- 自定义脚本 -->
+    <script src="electric-field-3d.js" defer></script>
+    <!-- 自定义样式 -->
+    <style>
+        /* 自定义颜色变量 */
+        :root {
+            --primary: #5E6AD2;
+            --primary-light: #8D91E2;
+            --secondary: #10B981;
+            --accent: #F59E0B;
+            --dark: #111827;
+            --light: #F9FAFB;
+            --gray: #6B7280;
+            --light-gray: #E5E7EB;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: var(--dark);
+            background-color: var(--light);
+        }
+
+        .btn {
+            transition: transform 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+        }
+
+        input:focus, select:focus, textarea:focus {
+            box-shadow: 0 0 0 3px rgba(94, 106, 210, 0.3);
+            border-color: var(--primary);
+        }
+
+        /* 滑块自定义样式 */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #e5e7eb;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #5E6AD2;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: var(--primary-light);
+            transform: scale(1.1);
+        }
+
+        /* Canvas 容器 */
+        #canvas-container {
+            position: relative;
+            background-color: #1a1a2e;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 600px;
+        }
+
+        /* 电荷控制项样式 */
+        .charge-item {
+            background: #f3f4f6;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            border-left: 4px solid var(--primary);
+        }
+
+        .charge-item.positive {
+            border-left-color: #ef4444;
+        }
+
+        .charge-item.negative {
+            border-left-color: #3b82f6;
+        }
+
+        /* 颜色选择器容器 */
+        .color-picker {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .color-option {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+
+        .color-option.active {
+            border-color: var(--dark);
+            box-shadow: 0 0 0 2px white, 0 0 0 4px var(--primary);
+        }
+
+        /* 图例样式 */
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .legend-line {
+            width: 30px;
+            height: 2px;
+        }
+
+        .legend-line.solid {
+            border-bottom: 2px solid #f59e0b;
+        }
+
+        .legend-line.dashed {
+            border-bottom: 2px dashed #10b981;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="../../categories/electromagnetism.html" class="flex items-center text-xl font-semibold text-gray-800">
+                        <i class="fas fa-arrow-left mr-2 text-indigo-600"></i>
+                        返回电磁学页面
+                    </a>
+                </div>
+                <div class="flex items-center">
+                    <span class="text-xl font-semibold text-gray-800">
+                        <i class="fas fa-bolt mr-2 text-indigo-600"></i>
+                        电场线可视化
+                    </span>
+                </div>
+                <div class="flex items-center">
+                    <a href="../../index.html" class="flex items-center text-xl font-semibold text-gray-800">
+                        <i class="fas fa-home mr-2 text-indigo-600"></i>
+                        首页
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主要内容 -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- 左侧控制面板 -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-xl shadow-md p-6">
+                    <h3 class="text-xl font-semibold mb-6 text-gray-800 border-b pb-2">实验参数控制</h3>
+
+                    <div class="space-y-6">
+                        <!-- 电荷数量选择 -->
+                        <div>
+                            <label for="charge-count" class="block text-sm font-medium text-gray-700 mb-2">电荷数量</label>
+                            <select id="charge-count" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                                <option value="1">单个电荷</option>
+                                <option value="2">两个电荷</option>
+                                <option value="3">三个电荷</option>
+                            </select>
+                        </div>
+
+                        <!-- 电荷控制区域 -->
+                        <div id="charges-container">
+                            <!-- 动态生成电荷控制项 -->
+                        </div>
+
+                        <!-- 显示控制 -->
+                        <div>
+                            <h4 class="text-lg font-medium text-gray-700 mb-4">显示控制</h4>
+                            <div class="space-y-3">
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="show-field-lines" class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4" checked>
+                                    <label for="show-field-lines" class="ml-2 block text-sm text-gray-700">显示电场线</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="show-equipotential" class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4" checked>
+                                    <label for="show-equipotential" class="ml-2 block text-sm text-gray-700">显示等势面</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="show-equipotential-lines" class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4" checked>
+                                    <label for="show-equipotential-lines" class="ml-2 block text-sm text-gray-700">显示固定等势线（多条）</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="show-charges-label" class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4" checked>
+                                    <label for="show-charges-label" class="ml-2 block text-sm text-gray-700">显示电荷标注</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 电场线密度控制 -->
+                        <div>
+                            <label for="field-line-density" class="block text-sm font-medium text-gray-700 mb-2">
+                                电场线密度
+                                <span id="density-value" class="text-indigo-600 ml-2">中</span>
+                            </label>
+                            <input type="range" id="field-line-density" min="16" max="160" value="48" step="4" class="w-full">
+                        </div>
+
+                        <!-- 等势面电势值控制 -->
+                        <div>
+                            <label for="equipotential-value" class="block text-sm font-medium text-gray-700 mb-2">
+                                等势面电势值
+                                <span id="equipotential-display" class="text-indigo-600 ml-2">+2000 V</span>
+                            </label>
+                            <input type="range" id="equipotential-value" min="-10000" max="10000" value="2000" step="100" class="w-full">
+                            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                <span>-10000V</span>
+                                <span>0</span>
+                                <span>+10000V</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 图例说明 -->
+                <div class="bg-white rounded-xl shadow-md p-6 mt-6">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">图例说明</h3>
+                    <div class="space-y-2">
+                        <div class="legend-item">
+                            <div class="legend-line solid"></div>
+                            <span class="text-sm text-gray-700">电场线（带箭头实线）</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="w-6 h-3 bg-green-500 opacity-35 rounded"></div>
+                            <span class="text-sm text-gray-700">等势面（完整连续曲面）</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-line dashed"></div>
+                            <span class="text-sm text-gray-700">固定等势线（虚线，多条）</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="w-4 h-4 rounded-full bg-red-500"></div>
+                            <span class="text-sm text-gray-700">正电荷</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="w-4 h-4 rounded-full bg-blue-500"></div>
+                            <span class="text-sm text-gray-700">负电荷</span>
+                        </div>
+                        <div class="mt-3 p-2 bg-blue-50 rounded text-xs text-gray-600">
+                            <p><strong>提示：</strong>等势面有两种显示方式：①可调节单一等势面（调节电势值滑块）；②固定多条等势线（虚线样式）。两种方式可同时使用，更直观地展示电场分布。</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 操作说明 -->
+                <div class="bg-white rounded-xl shadow-md p-6 mt-6">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">操作说明</h3>
+                    <ul class="text-sm text-gray-600 space-y-2">
+                        <li><i class="fas fa-mouse mr-2 text-indigo-600"></i>左键拖动：旋转视角</li>
+                        <li><i class="fas fa-search-plus mr-2 text-indigo-600"></i>滚轮：缩放视图</li>
+                        <li><i class="fas fa-hand-paper mr-2 text-indigo-600"></i>右键拖动：平移视图</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 右侧模拟区域 -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- 模拟画布 -->
+                <div id="canvas-container" class="w-full bg-white rounded-xl shadow-md overflow-hidden">
+                    <!-- Three.js 将在这里绘制 -->
+                </div>
+
+                <!-- 控制按钮 -->
+                <div class="bg-white rounded-xl shadow-md p-4">
+                    <div class="flex space-x-3">
+                        <button id="reset-view-btn" class="flex-1 bg-gray-600 text-white px-4 py-3 rounded-lg hover:bg-gray-700 transition btn">
+                            <i class="fas fa-sync-alt mr-2"></i>重置视角
+                        </button>
+                        <button id="reset-charges-btn" class="flex-1 bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 transition btn">
+                            <i class="fas fa-redo mr-2"></i>重置电荷
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 电场信息面板 -->
+                <div class="bg-white rounded-xl shadow-md p-6">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800">电场信息</h3>
+                    <div id="field-info" class="text-sm text-gray-600 space-y-2">
+                        <p>当前电荷配置的电场信息将在此显示</p>
+                    </div>
+                </div>
+
+                <!-- 实验原理说明 -->
+                <div class="bg-white rounded-xl shadow-md p-6">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800">电场线原理</h3>
+                    <p class="text-gray-600 mb-4">
+                        电场线是描述电场分布的直观工具。电场线上每一点的切线方向表示该点电场强度的方向，电场线的密度表示电场强度的大小。
+                    </p>
+                    <p class="text-gray-600 mb-4">
+                        电场线具有以下性质：
+                    </p>
+                    <ul class="text-gray-600 mb-4 list-disc list-inside space-y-1">
+                        <li>电场线始于正电荷（或无穷远），止于负电荷（或无穷远）</li>
+                        <li>电场线不闭合、不相交</li>
+                        <li>电场线密集处电场强度大，稀疏处电场强度小</li>
+                        <li>沿电场线方向电势逐渐降低</li>
+                    </ul>
+                    <p class="text-gray-600 mb-4">
+                        等势面是电场中电势相等的点构成的面。等势面与电场线处处垂直，沿等势面移动电荷不做功。
+                    </p>
+                    <p class="text-gray-600">
+                        点电荷的电场强度遵循库仑定律：E = kQ/r²，其中k为静电力常量，Q为电荷量，r为到点电荷的距离。
+                    </p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-gray-50 border-t border-gray-200 py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col sm:flex-row justify-between items-center">
+                <p class="text-sm text-gray-500">&copy; 2025 物理可视化教学平台. 保留所有权利.</p>
+                <p class="text-sm text-gray-500 mt-2 sm:mt-0">作者：<span class="text-indigo-600 font-medium">Lisa</span></p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,6 @@
+---
+description: 同步
+globs: 
+alwaysApply: false
+---
+在每个已完成步骤的最后，将你的工作日志记录到@文件里。
