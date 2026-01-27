@@ -371,9 +371,9 @@ function createFieldLines() {
     if (!showFieldLines) return;
 
     const lineCount = fieldLineDensity;
-    const maxSteps = 2000;
-    const stepSize = 0.03;
-    const bounds = 50;
+    const maxSteps = 5000;
+    const stepSize = 0.02;
+    const bounds = 80;
 
     const positiveCharges = charges.filter(c => c.q > 0);
     const negativeCharges = charges.filter(c => c.q < 0);
