@@ -67,6 +67,12 @@ const allExperiments = [
         tags: ["电场", "静电场", "场强", "电力线", "点电荷"]
     },
     {
+        title: "静电场模拟 (3D)",
+        category: "电磁学",
+        url: "simulations/electromagnetism/electric-field-3d.html",
+        tags: ["电场", "静电场", "场强", "电力线", "点电荷", "3D", "等势面", "等高线", "电荷分布", "电势"]
+    },
+    {
         title: "磁场与电流",
         category: "电磁学",
         url: "simulations/electromagnetism/magnetic-field.html",
