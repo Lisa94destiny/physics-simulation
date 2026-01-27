@@ -110,9 +110,9 @@ const popularExperiments = [
         url: "simulations/waves/harmonic.html"
     },
     {
-        title: "电场可视化",
+        title: "静电场模拟 (3D)",
         category: "电磁学",
-        url: "simulations/electromagnetism/electric-field.html"
+        url: "simulations/electromagnetism/electric-field-3d.html"
     }
 ];
 
